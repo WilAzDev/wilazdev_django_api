@@ -1,3 +1,12 @@
+# core
 core/__pycache__
 .venv
 db.sqlite3
+
+## apps
+apps/__pycache__
+
+# auth
+apps/authentication/__pycache__
+apps/authentication/migrations/__pycache__
+apps/authentication/tests/__pycache__
