@@ -203,7 +203,6 @@ class ProfileCreateTests(APITestCase):
         
     def test_profile_create_with_invalid_gender(self):
         
-        print(self.Gender.objects.all().values('name'))
         data = {**self.data}
         data['gender_id'] = self.Gender.objects.all().last().id + 1
         response = self.client.post(self.url,data,format='json')
