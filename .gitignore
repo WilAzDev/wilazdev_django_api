@@ -2,11 +2,20 @@
 core/__pycache__
 .venv
 db.sqlite3
+.DS_Store
 
 ## apps
 apps/__pycache__
+apps/.DS_Store
 
 # auth
 apps/authentication/__pycache__
+apps/authentication/.DS_Store
 apps/authentication/migrations/__pycache__
+apps/authentication/migrations/.DS_Store
 apps/authentication/tests/__pycache__
+apps/authentication/tests/.DS_Store
+apps/authentication/serializers/__pycache__
+apps/authentication/serializers/.DS_Store
+apps/authentication/views/__pycache__
+apps/authentication/views/.DS_Store

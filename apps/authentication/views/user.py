@@ -4,11 +4,10 @@ from rest_framework import (
     generics,
     status
 )
-from .serializers import (
-    UserRegisterSerializer,
+from ..serializers.user import (
+    UserRegisterSerializer
 )
 
-# Create your views here.
 class UserRegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
     authentication_classes = []
