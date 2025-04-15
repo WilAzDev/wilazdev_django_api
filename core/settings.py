@@ -10,7 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import sys
+import environ
+import datetime
 from pathlib import Path
+
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +25,17 @@ sys.path.append(str(BASE_DIR))
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ny$*^lt3)c$myb1_9_@xxnn709j9ng$($ax=w6l3e)9wr*(@-c'
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG',default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS',default=[])
 
+FRONTEND_URL = env.str('FRONTEND_URL')
+
+CSRF_TRUSTED_ORIGINS = [FRONTEND_URL]
+CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
 
 # Application definition
 
@@ -37,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'core',
     'rest_framework',
     'drf_yasg',
     'rest_framework_simplejwt',
@@ -77,10 +87,22 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+## Delete or comment this if you are using a different database engine
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+## Uncomment this if you are using a different database engine
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': f'django.db.backends.{env.str('DB_ENGINE')}',
+        'NAME': f'{env.str('DB_NAME',default=BASE_DIR / 'db.sqlite3')}',
+        'USER':env.str('DB_USER'),
+        'HOST':env.str('DB_HOST'),
+        'PASSWORD':env.str('DB_PASSWORD'),
+        'PORT':env.str('DB_PORT')
     }
 }
 
@@ -91,6 +113,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(days=env.int('JWT_DAYS_DURATION',default=1)),
+    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('JWT_DAYS_DURATION',default=1)*2),
+    'ROTATE_REFRESH_TOKENS':env.bool('ROTATE_REFRESH_TOKENS',default=False),
+    'BLACKLIST_AFTER_ROTATION':env.bool('BLACKLIST_AFTER_ROTATION',default=False),
 }
 
 
@@ -136,3 +165,13 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# EMAIL SETTINGS
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env.str('EMAIL_HOST',default='')
+EMAIL_PORT = env.int('EMAIL_PORT',default=0)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS',default=False)
+EMAIL_HOST_USER =  env.str('EMAIL_HOST_USER',default='')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD',default='')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

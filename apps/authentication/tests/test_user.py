@@ -1,7 +1,10 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import AccessToken
 from django.apps import apps
+from django.core import mail
+from datetime import datetime, timedelta
 
 class UserRegisterTests(APITestCase):
     
@@ -148,3 +151,78 @@ class UserRegisterTests(APITestCase):
         response = self.client.post(self.url,data,format='json')
         self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The password field is required')
         self.assertIn('password',response.data,'Should return the error message')
+        
+    def test_token_present_in_email_template(self):
+        
+        self.client.post(self.url, self.data,format='json')
+        
+        self.assertEqual(len(mail.outbox),1,'Should send one email')
+        email = mail.outbox[0]
+        activation_link = email.alternatives[0][0].split('href="')[1].split('"')[0]
+        
+        token = activation_link.split('/activate/')[1].strip('/')
+                
+        try:
+            decoded_token = AccessToken(token)
+        except Exception as e:
+            self.fail(f'Invalid token: {e}')
+            
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        
+        token_duration = exp_time - iat_time
+        expected_duraction = timedelta(minutes=30)
+        
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duraction.total_seconds(),
+            delta=1,
+            msg='The token duration is not 30 minutes'
+        )
+
+class UserActivateTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_activate')
+        self.User = apps.get_model('authentication','User')
+        self.user = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@123456789',
+            is_active=False
+        )
+        self.token = AccessToken.for_user(self.user)
+        self.token.set_exp(
+            from_time=datetime.now(),
+            lifetime=timedelta(minutes=30)
+        )
+    
+    def test_activation_with_valid_token(self):
+        
+        response = self.client.post(self.url,{'activation_token':str(self.token)})
+        self.assertEqual(response.status_code,status.HTTP_200_OK,'The request should return 200 OK')
+        self.user = self.User.objects.filter(id=self.user.id).first()
+        self.assertTrue(self.user.is_active,'The user is not activated')
+            
+    def test_activation_with_invalid_token(self):
+        
+        response = self.client.post(self.url,{'activation_token':'invalid_token'})
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The token must be a valid token')
+        self.assertFalse(self.user.is_active,'The user is activated')
+        
+        token = AccessToken.for_user(self.user)
+        payload = token.payload
+        payload['exp'] = datetime.now()- timedelta(seconds=5)
+        payload['iat'] = datetime.now()- timedelta(seconds=1)
+        expired_token = AccessToken.for_user(self.user)
+        expired_token.payload = payload
+        response = self.client.post(self.url,{'activation_token':expired_token})
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The token must not be expired')
+        self.assertFalse(self.user.is_active,'The user is activated')
+        
+    def test_activation_with_no_token(self):
+        
+        response = self.client.post(self.url,{})
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The response status code is not 400')
+        self.assertFalse(self.user.is_active,'The user is activated')
+        

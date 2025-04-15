@@ -2,6 +2,8 @@ from typing import Dict,Any,List
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken
 from ..models import User
 import re
 
@@ -68,3 +70,29 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('password2')
         validated_data['is_active'] = False
         return User.objects.create_user(**validated_data)
+    
+class UserActivationSerializer(serializers.ModelSerializer):
+    
+    activation_token = serializers.CharField(required=True)
+    
+    class Meta:
+        model = User
+        fields = ['activation_token']
+        
+    def validate(self,attrs:Dict[str,Any]):
+        errors:Dict[str,List[str]] = {}
+        try:
+            attrs['activation_token'] = JWTAuthentication().get_validated_token(attrs['activation_token'])
+        except InvalidToken as e:
+            errors.setdefault('activation_token',[]).append('The activation token is invalid or expired')
+            raise ValidationError(errors)
+        return attrs
+    
+    def activate_user(self)-> User:
+        payload = self.validated_data['activation_token'].payload
+        
+        user = User.objects.get(id=payload['user_id'])
+        if not user.is_active:
+            user.is_active = True
+        user.save()
+        return user

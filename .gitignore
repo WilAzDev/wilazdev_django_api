@@ -1,5 +1,13 @@
 # core
 core/__pycache__
+core/.DS_Store
+core/management/__pycache__
+core/management/.DS_Store
+core/management/commands/__pycache__
+core/management/commands/.DS_Store
+core/.env
+
+# root
 .venv
 db.sqlite3
 .DS_Store
@@ -19,3 +27,7 @@ apps/authentication/serializers/__pycache__
 apps/authentication/serializers/.DS_Store
 apps/authentication/views/__pycache__
 apps/authentication/views/.DS_Store
+apps/authentication/templatetags/__pycache__
+apps/authentication/templatetags/.DS_Store
+apps/authentication/functions/__pycache__
+apps/authentication/functions/.DS_Store
