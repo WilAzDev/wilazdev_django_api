@@ -5,9 +5,14 @@ from rest_framework import (
     generics,
     status
 )
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 from ..serializers.user import (
     UserRegisterSerializer,
     UserActivationSerializer,
+    UserLoginSerializer
 )
 from ..models import User
 from ..functions.token import (
@@ -76,3 +81,31 @@ class UserActivationView(generics.CreateAPIView):
             "message":'User activated successfully'
             }, 
         status=status.HTTP_200_OK)
+        
+class GetTokenView:
+    def post(self,request,*args,**kwargs):
+        response = super().post(request,*args, **kwargs)
+        
+        access_token = response.data.get('access')
+        refresh_token = response.data.get('refresh')
+        token_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
+        refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
+        expires_in = int(token_lifetime.total_seconds())
+        refresh_expires_in = int(refresh_lifetime.total_seconds())
+        
+        response_data = {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'expires_in': expires_in,
+            'refresh_expires_in': refresh_expires_in,
+            'token_type':'Bearer'
+        }
+        
+        return Response(response_data,status=status.HTTP_200_OK)
+    
+class UserLoginView(GetTokenView,TokenObtainPairView):
+    serializer_class = UserLoginSerializer
+
+class UserRefreshView(GetTokenView,TokenRefreshView):
+    serializer_class = UserRefreshSerializer
+        

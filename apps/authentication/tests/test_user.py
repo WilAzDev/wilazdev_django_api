@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken,RefreshToken
 from django.apps import apps
 from django.core import mail
 from datetime import datetime, timedelta
@@ -209,7 +209,8 @@ class UserActivateTests(APITestCase):
         response = self.client.post(self.url,{'activation_token':'invalid_token'})
         self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The token must be a valid token')
         self.assertFalse(self.user.is_active,'The user is activated')
-        
+        self.assertIn('activation_token',response.data,'Should return the token error')
+
         token = AccessToken.for_user(self.user)
         payload = token.payload
         payload['exp'] = datetime.now()- timedelta(seconds=5)
@@ -219,10 +220,105 @@ class UserActivateTests(APITestCase):
         response = self.client.post(self.url,{'activation_token':expired_token})
         self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The token must not be expired')
         self.assertFalse(self.user.is_active,'The user is activated')
+        self.assertIn('activation_token',response.data,'Should return the token error')
         
     def test_activation_with_no_token(self):
         
         response = self.client.post(self.url,{})
         self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The response status code is not 400')
         self.assertFalse(self.user.is_active,'The user is activated')
+        self.assertIn('activation_token',response.data,'Should return the token error')
+
+class UserLoginTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_login')
+        self.User = apps.get_model('authentication','User')
+        self.user = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@123456789',
+            is_active=True
+        )
+        self.data = {'username':self.user.username,'password':'Password@123456789'}
+    
+    def test_login_with_valid_credentials(self):
         
+        data = {**self.data}
+        
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_200_OK,'The user could not login successfully')
+        self.assertIsNotNone(response.data.get('access_token'),'Should return the access token')
+        decoded_token = AccessToken(response.data.get('access_token'))
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        token_duration = exp_time - iat_time
+        expected_duration = timedelta(days=1)
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duration.total_seconds(),
+            delta=1,
+            msg='The access_token duration is not 1 day'
+        )
+        self.assertIsNotNone(response.data.get('refresh_token'),'Should return the refresh token')
+        decoded_token = RefreshToken(response.data.get('refresh_token'))
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        token_duration = exp_time - iat_time
+        expected_duration = timedelta(days=2)
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duration.total_seconds(),
+            delta=1,
+            msg='The refresh_token duration is not 2 days'
+        )
+        self.assertIn('token_type',response.data,'Should return the token type')
+        self.assertIn('expires_in',response.data,'Should return the token expiration time')
+        self.assertIn('refresh_expires_in',response.data,'Should return the refresh token expiration time')
+        
+        del data['username']
+        data['email'] = self.user.email
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_200_OK,'The user could not login successfully')
+        
+    def test_login_with_invalid_credentials(self):
+        
+        data = {**self.data}
+        
+        del data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The user must not login successfully')
+        self.assertIn('password',response.data,'Should return the password error')
+        
+        data["password"] = "INVALID_PASSWORD"
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with invalid credentials')
+        data['password'] = self.data['password']
+        
+        data['username'] = "INVALID_USERNAME"
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with invalid credentials')
+        del data['username']
+                
+        data['email'] = 'invalidemail@gmail.com'
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with invalid credentials')
+        
+        del data['email']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The user should not be able to login with invalid credentials')
+        self.assertIn('email_or_username',response.data,'If the request does not have the email it must have the username')
+    
+    def test_login_for_inactive_user(self):
+        
+        user = self.User.objects.create_user(
+            username=f"{self.data['username']}2",
+            email='test2@gmail.com',
+            password=self.data['password'],
+            is_active=False
+        )
+        
+        data = {'username':user.username,'password':user.password}
+        
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with an inactive account')

@@ -1,11 +1,16 @@
 from typing import Dict,Any,List
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from rest_framework import serializers
+from rest_framework import serializers,status
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.exceptions import InvalidToken,AuthenticationFailed
+from rest_framework_simplejwt.serializers import (
+    TokenRefreshSerializer,
+    TokenObtainPairSerializer
+)
 from ..models import User
 import re
+
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     username = serializers.CharField(max_length=150, min_length=3)
@@ -96,3 +101,40 @@ class UserActivationSerializer(serializers.ModelSerializer):
             user.is_active = True
         user.save()
         return user
+    
+class UserLoginSerializer(TokenObtainPairSerializer):
+    email = serializers.EmailField(required=False)
+    username = serializers.CharField(required=False)
+    
+    def __init__(self,*args, **kwargs):
+         super().__init__(*args, **kwargs)
+         self.fields['username'].required = False
+    
+    def validate(self, attrs:Dict[str,Any]):
+        errors:Dict[str,List[str]] = {}
+        
+        email = attrs.get('email')
+        password = attrs.get('password')
+        username = attrs.get('username')
+        
+        if not (email or username):
+            errors.setdefault('email_or_username',[]).append('Either email or username is required')
+            raise ValidationError(errors)
+        
+        if email:
+            user = User.objects.filter(email=email).first()
+        elif username:
+            user = User.objects.filter(username=username).first()
+        
+        if user and user.check_password(password):
+            if not user.is_active:
+                raise AuthenticationFailed('The user is not active')
+            refresh = self.get_token(user)
+            attrs['refresh'] = str(refresh)
+            attrs['access'] = str(refresh.access_token)
+            return attrs
+        else:
+            raise AuthenticationFailed('Invalid credentials')
+
+class UserRefreshSerializer(TokenRefreshSerializer):
+    pass

@@ -120,6 +120,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('JWT_DAYS_DURATION',default=1)*2),
     'ROTATE_REFRESH_TOKENS':env.bool('ROTATE_REFRESH_TOKENS',default=False),
     'BLACKLIST_AFTER_ROTATION':env.bool('BLACKLIST_AFTER_ROTATION',default=False),
+    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.user.UserLoginSerializer',
 }
 
 
