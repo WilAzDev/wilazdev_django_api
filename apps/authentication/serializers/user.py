@@ -137,4 +137,9 @@ class UserLoginSerializer(TokenObtainPairSerializer):
             raise AuthenticationFailed('Invalid credentials')
 
 class UserRefreshSerializer(TokenRefreshSerializer):
-    pass
+    def validate(self,attrs):
+        attrs = super().validate(attrs)
+        attrs['access'] = str(attrs['access'])
+        if 'refresh' in attrs:
+            attrs['refresh'] = str(attrs['refresh'])
+        return attrs

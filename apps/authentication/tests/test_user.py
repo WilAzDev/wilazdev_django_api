@@ -322,3 +322,71 @@ class UserLoginTests(APITestCase):
         
         response = self.client.post(self.url,data,format='json')
         self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with an inactive account')
+        
+class UserRefreshTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_refresh')
+        self.auth_url = reverse('auth_login')
+        self.User = apps.get_model('authentication','User')
+        self.user = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@123456789',
+            is_active=True
+        )
+        self.login_data = {'username':self.user.username,'password':'Password@123456789'}
+    
+    def test_refresh_valid_token(self):
+        
+        login_response = self.client.post(self.auth_url,self.login_data,format='json')
+        data = {'refresh':login_response.data.get('refresh_token')}
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_200_OK,'The user should be able to refresh their token')
+        self.assertIsNotNone(response.data.get('access_token'),'Should return the access token')
+        decoded_token = AccessToken(response.data.get('access_token'))
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        token_duration = exp_time - iat_time
+        expected_duration = timedelta(days=1)
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duration.total_seconds(),
+            delta=1,
+            msg='The access_token duration is not 1 day'
+        )
+        self.assertIsNotNone(response.data.get('refresh_token'),'Should return the refresh token')
+        decoded_token = RefreshToken(response.data.get('refresh_token'))
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        token_duration = exp_time - iat_time
+        expected_duration = timedelta(days=2)
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duration.total_seconds(),
+            delta=1,
+            msg='The refresh_token duration is not 2 days'
+        )
+        self.assertIn('token_type',response.data,'Should return the token type')
+        self.assertIn('expires_in',response.data,'Should return the token expiration time')
+        self.assertIn('refresh_expires_in',response.data,'Should return the refresh token expiration time')
+    
+    def test_refresh_token_with_no_token(self):
+        
+        data = {}
+        
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The user should not be able to refresh their token without a token')
+        self.assertIn('refresh',response.data,'Should return the refresh token error')
+    
+    def test_refresh_token_expired(self):
+        
+        refresh_token = self.refresh_token
+        payload = refresh_token.payload
+        payload['exp'] = datetime.now() - timedelta(seconds=5)
+        payload['iat'] = datetime.now() - timedelta(seconds=1)
+        refresh_token.payload = payload
+        data = {'refresh':refresh_token}
+        
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to refresh their token')    

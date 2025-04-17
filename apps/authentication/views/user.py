@@ -12,7 +12,8 @@ from rest_framework_simplejwt.views import (
 from ..serializers.user import (
     UserRegisterSerializer,
     UserActivationSerializer,
-    UserLoginSerializer
+    UserLoginSerializer,
+    UserRefreshSerializer
 )
 from ..models import User
 from ..functions.token import (
@@ -85,7 +86,6 @@ class UserActivationView(generics.CreateAPIView):
 class GetTokenView:
     def post(self,request,*args,**kwargs):
         response = super().post(request,*args, **kwargs)
-        
         access_token = response.data.get('access')
         refresh_token = response.data.get('refresh')
         token_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
@@ -107,5 +107,4 @@ class UserLoginView(GetTokenView,TokenObtainPairView):
     serializer_class = UserLoginSerializer
 
 class UserRefreshView(GetTokenView,TokenRefreshView):
-    serializer_class = UserRefreshSerializer
-        
+    serializer_class = UserRefreshSerializer        
