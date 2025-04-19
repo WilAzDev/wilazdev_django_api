@@ -76,6 +76,38 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         validated_data['is_active'] = False
         return User.objects.create_user(**validated_data)
     
+class UserUpdateSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=30, min_length=3)
+    class Meta:
+        model = User
+        fields = ['username','email']
+    
+    def validate_username(self,value:str):
+        value = value.strip()
+        instance = getattr(self, 'instance', None)
+        username:str = value
+        if not re.match(r'^[A-Za-z][A-Za-z0-9]*$',username):
+            raise serializers.ValidationError('Username must be alphanumeric')
+        if ' ' in username:
+            raise serializers.ValidationError('Username must not contain any spaces')
+        if User.objects.filter(username=value).exclude(id=instance.id).exists():
+            raise serializers.ValidationError('Username is already taken')
+        return value
+    
+    def validate_email(self,value:str):
+        value = value.strip()
+        instance = getattr(self, 'instance', None)
+        try:
+            validate_email(value)
+        except ValidationError:
+            raise serializers.ValidationError('Invalid email')
+        if len(value) > 254:
+            raise serializers.ValidationError('Email is too long')
+        if User.objects.filter(email=value).exclude(id=instance.id).exists():
+            raise serializers.ValidationError('Email is already taken')
+        return value
+    
+    
 class UserActivationSerializer(serializers.ModelSerializer):
     
     activation_token = serializers.CharField(required=True)

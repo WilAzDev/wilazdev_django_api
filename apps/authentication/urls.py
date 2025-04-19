@@ -9,5 +9,6 @@ urlpatterns = [
     path('logout', user.UserLogoutView.as_view(),name="auth_logout"),
     path('refresh',user.UserRefreshView.as_view(),name='auth_refresh'),
     path('activate',user.UserActivationView.as_view(),name='auth_activate'),
-    path('profile/create',profile.ProfileCreateView.as_view(),name='auth_profile_create')
+    path('users/update/<int:pk>/',user.UserUpdateView.as_view(),name='auth_user_update'),
+    path('profiles/create',profile.ProfileCreateView.as_view(),name='auth_profile_create')
 ]

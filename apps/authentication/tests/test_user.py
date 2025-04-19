@@ -183,6 +183,118 @@ class UserRegisterTests(APITestCase):
             msg='The token duration is not 30 minutes'
         )
 
+class UserUpdateTests(APITestCase):
+    
+    def setUp(self):
+        self.User = apps.get_model('authentication','User')
+        self.create_data = {
+            'username': 'testuser',
+            'email': 'testuser@example.com',
+            'password': 'Password@123456789',
+            'is_active': True,
+        }
+        self.user = self.User.objects.create_user(**self.create_data)
+        self.url = reverse('auth_user_update', kwargs={'pk': self.user.id})
+        self.access_token = AccessToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + str(self.access_token))
+        self.update_data = {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+        }
+    
+    def test_user_update_with_valid_data(self):
+        
+        data = {**self.update_data}
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code,status.HTTP_200_OK,'The user must be updated')
+        user = self.User.objects.get(id=self.user.id)
+        self.assertEqual(user.username, self.update_data['username'],'The username was not updated')
+        self.assertEqual(user.email, self.update_data['email'],'The email was not updated')
+    
+    def test_user_update_with_invalid_username(self):
+        
+        data = {**self.update_data}
+        
+        del data['username']
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The username must be required')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data['username'] = 'a'*151
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The username must be at most 150 characters long')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data['username'] = '1testuser'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The username must not start with a number')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data['username'] = 'te'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The username must be at least 3 characters long')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data['username'] = 'test@123456789'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The username must not contain any special characters')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data['username'] = 'test 123456789'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The username must not contain any spaces')
+        self.assertIn('username',response.data,'Should return the error message')
+        
+        data_user_two = {
+            'username': 'testuser2',
+            'email': 'testuser2@example.com',
+            'password': 'Password@12345678',
+            'is_active': True,
+        }
+        self.User.objects.create_user(**data_user_two)
+        data['username'] = 'testuser2'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The username must be unique')
+        self.assertIn('username',response.data,'Should return the error message')
+
+    def test_user_update_with_invalid_email(self):
+        
+        data = {**self.update_data}
+        data_user_two = {
+            'username': 'testuser2',
+            'email': 'testuser2@example.com',
+            'password': 'Password@12345678',
+            'is_active': True,
+        }
+        self.User.objects.create_user(**data_user_two)
+        data['email'] = 'testuser2@example.com'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The email must be unique')
+        self.assertIn('email',response.data,'Should return the error message')
+        
+        del data['email']
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The email must be required.')
+        self.assertIn('email',response.data,'Should return the error message')
+        
+        data['email'] = 'testuserexample.com'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The email must be a valid email address')
+        self.assertIn('email',response.data,'Should return the error message')
+        
+        data['email'] = f'testuser1{"25"*117}@example.com'
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The email must be at most 254 characters long')
+        self.assertIn('email',response.data,'Should return the error message')
+
+    def test_user_update_witch_invalid_user(self):
+        
+        data = {**self.update_data}
+        self.access_token = ''
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.access_token)
+        response = self.client.put(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user must be authenticated')
+        
 class UserActivateTests(APITestCase):
     
     def setUp(self):

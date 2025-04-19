@@ -10,12 +10,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
     TokenBlacklistView
 )
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import IsAuthenticated
 from ..serializers.user import (
     UserRegisterSerializer,
     UserActivationSerializer,
     UserLoginSerializer,
-    UserRefreshSerializer
+    UserRefreshSerializer,
+    UserUpdateSerializer
 )
 from ..models import User
 from ..functions.token import (
@@ -71,6 +72,11 @@ class UserRegisterView(generics.CreateAPIView):
             'message':'User created successfully',
             },
         status=status.HTTP_201_CREATED)
+        
+class UserUpdateView(generics.UpdateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserUpdateSerializer
+    permission_classes = [IsAuthenticated]
         
 class UserActivationView(generics.CreateAPIView):
     serializer_class = UserActivationSerializer
