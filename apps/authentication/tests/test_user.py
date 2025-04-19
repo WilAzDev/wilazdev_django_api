@@ -256,24 +256,24 @@ class UserLoginTests(APITestCase):
         iat_time = datetime.fromtimestamp(decoded_token['iat'])
         exp_time = datetime.fromtimestamp(decoded_token['exp'])
         token_duration = exp_time - iat_time
-        expected_duration = timedelta(days=1)
+        expected_duration = timedelta(minutes=15)
         self.assertAlmostEqual(
             token_duration.total_seconds(),
             expected_duration.total_seconds(),
             delta=1,
-            msg='The access_token duration is not 1 day'
+            msg='The access_token duration is not 15 minutes'
         )
         self.assertIsNotNone(response.data.get('refresh_token'),'Should return the refresh token')
         decoded_token = RefreshToken(response.data.get('refresh_token'))
         iat_time = datetime.fromtimestamp(decoded_token['iat'])
         exp_time = datetime.fromtimestamp(decoded_token['exp'])
         token_duration = exp_time - iat_time
-        expected_duration = timedelta(days=2)
+        expected_duration = timedelta(days=1)
         self.assertAlmostEqual(
             token_duration.total_seconds(),
             expected_duration.total_seconds(),
             delta=1,
-            msg='The refresh_token duration is not 2 days'
+            msg='The refresh_token duration is not 1 day'
         )
         self.assertIn('token_type',response.data,'Should return the token type')
         self.assertIn('expires_in',response.data,'Should return the token expiration time')

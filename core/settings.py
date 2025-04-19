@@ -117,8 +117,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(days=env.int('JWT_DAYS_DURATION',default=1)),
-    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('JWT_DAYS_DURATION',default=1)*2),
+    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=env.int('JWT_MINUTES_DURATION',default=15)),
+    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('REFRESH_TOKEN_LIFETIME',default=1)),
     'ROTATE_REFRESH_TOKENS':env.bool('ROTATE_REFRESH_TOKENS',default=False),
     'BLACKLIST_AFTER_ROTATION':env.bool('BLACKLIST_AFTER_ROTATION',default=False),
     'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.user.UserLoginSerializer',
