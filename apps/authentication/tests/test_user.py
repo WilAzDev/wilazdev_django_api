@@ -5,6 +5,9 @@ from rest_framework_simplejwt.tokens import AccessToken,RefreshToken
 from django.apps import apps
 from django.core import mail
 from datetime import datetime, timedelta
+from ..functions import (
+    token
+)
 
 class UserRegisterTests(APITestCase):
     
@@ -322,6 +325,28 @@ class UserLoginTests(APITestCase):
         
         response = self.client.post(self.url,data,format='json')
         self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to login with an inactive account')
+
+class UserLogoutTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_logout')
+        self.User = apps.get_model('authentication','User')
+        self.user_data = {
+            'username':'testuser',
+            'email':'test@gmail.com',
+            'password':'Password@980320'
+        }
+        self.user = self.User.objects.create_user(**self.user_data)
+        self.auth_data = {'username':self.user_data['username'],'password':self.user_data['password']}
+        self.auth_response = self.client.post(reverse('auth_login'),self.auth_data)
+        self.access_token = self.auth_response.data['access_token']
+        self.refresh_token = self.auth_response.data['refresh_token']
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer '+self.access_token)
+        
+    def test_logout(self):
+        response = self.client.post(self.url,{'refresh':self.refresh_token})
+        self.assertEqual(response.status_code,status.HTTP_204_NO_CONTENT,'The user should be able to logout')
+        self.assertFalse(token.is_token_valid(self.refresh_token),'The refresh_token must be invalid after logout')
         
 class UserRefreshTests(APITestCase):
     

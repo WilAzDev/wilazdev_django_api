@@ -8,7 +8,9 @@ from rest_framework import (
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
+    TokenBlacklistView
 )
+from rest_framework_simplejwt.tokens import RefreshToken
 from ..serializers.user import (
     UserRegisterSerializer,
     UserActivationSerializer,
@@ -107,4 +109,9 @@ class UserLoginView(GetTokenView,TokenObtainPairView):
     serializer_class = UserLoginSerializer
 
 class UserRefreshView(GetTokenView,TokenRefreshView):
-    serializer_class = UserRefreshSerializer        
+    serializer_class = UserRefreshSerializer    
+
+class UserLogoutView(TokenBlacklistView):
+    def post(self,request:Request,*args, **kwargs):
+        super().post(request,*args, **kwargs)
+        return Response(status=status.HTTP_204_NO_CONTENT)    
