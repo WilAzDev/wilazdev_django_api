@@ -485,24 +485,24 @@ class UserRefreshTests(APITestCase):
         iat_time = datetime.fromtimestamp(decoded_token['iat'])
         exp_time = datetime.fromtimestamp(decoded_token['exp'])
         token_duration = exp_time - iat_time
-        expected_duration = timedelta(days=1)
+        expected_duration = timedelta(minutes=15)
         self.assertAlmostEqual(
             token_duration.total_seconds(),
             expected_duration.total_seconds(),
             delta=1,
-            msg='The access_token duration is not 1 day'
+            msg='The access_token duration is not 15 minutes'
         )
         self.assertIsNotNone(response.data.get('refresh_token'),'Should return the refresh token')
         decoded_token = RefreshToken(response.data.get('refresh_token'))
         iat_time = datetime.fromtimestamp(decoded_token['iat'])
         exp_time = datetime.fromtimestamp(decoded_token['exp'])
         token_duration = exp_time - iat_time
-        expected_duration = timedelta(days=2)
+        expected_duration = timedelta(days=1)
         self.assertAlmostEqual(
             token_duration.total_seconds(),
             expected_duration.total_seconds(),
             delta=1,
-            msg='The refresh_token duration is not 2 days'
+            msg='The refresh_token duration is not 1 day'
         )
         self.assertIn('token_type',response.data,'Should return the token type')
         self.assertIn('expires_in',response.data,'Should return the token expiration time')
@@ -517,13 +517,12 @@ class UserRefreshTests(APITestCase):
         self.assertIn('refresh',response.data,'Should return the refresh token error')
     
     def test_refresh_token_expired(self):
+        auth_response = self.client.post(self.auth_url, self.login_data, format='json')
+        refresh_token = RefreshToken(auth_response.data['refresh_token'])
         
-        refresh_token = self.refresh_token
-        payload = refresh_token.payload
-        payload['exp'] = datetime.now() - timedelta(seconds=5)
-        payload['iat'] = datetime.now() - timedelta(seconds=1)
-        refresh_token.payload = payload
-        data = {'refresh':refresh_token}
+        refresh_token.set_exp(lifetime=timedelta(seconds=-5))
         
-        response = self.client.post(self.url,data,format='json')
-        self.assertEqual(response.status_code,status.HTTP_401_UNAUTHORIZED,'The user should not be able to refresh their token')    
+        data = {'refresh': str(refresh_token)}
+        response = self.client.post(self.url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
