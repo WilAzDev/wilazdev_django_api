@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from ..functions import (
     token
 )
+from ..choices import (
+    PasswordRecoveryChoises
+)
 
 class UserRegisterTests(APITestCase):
     
@@ -526,3 +529,136 @@ class UserRefreshTests(APITestCase):
         response = self.client.post(self.url, data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class UserRequestChangePasswordTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_request_password_change')
+        self.User = apps.get_model('authentication', 'User')
+        self.user = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@123456789',
+            is_active=True
+        )
+        self.password_change_data = {'email': self.user.email,'motive':PasswordRecoveryChoises.RECOVERY}
+    
+    def test_request_password_change(self):
+        
+        self.client.post(self.url, self.password_change_data, format='json')
+        self.assertEqual(len(mail.outbox),1,'Should send a password change email')
+        email = mail.outbox[0]
+        password_link = email.alternatives[0][0].split('href="')[1].split('"')[0]
+        token = password_link.split('/reset-password/')[1].strip('/')
+        try:
+            decoded_token = AccessToken(token)
+        except Exception as e:
+            self.fail(f"Token decoding failed: {str(e)}")
+        
+        iat_time = datetime.fromtimestamp(decoded_token['iat'])
+        exp_time = datetime.fromtimestamp(decoded_token['exp'])
+        
+        token_duration = exp_time - iat_time
+        expected_duration = timedelta(minutes=5)
+        
+        self.assertAlmostEqual(
+            token_duration.total_seconds(),
+            expected_duration.total_seconds(),
+            delta=1,
+            msg='The password change token duration is not 5 minutes'
+        )
+    
+    def test_request_password_change_with_invalid_email(self):
+        
+        data = {**self.password_change_data}
+        data['email'] = 'invalidemail@example.com'
+        request = self.client.post(self.url, data, format='json')
+        self.assertEqual(request.status_code,status.HTTP_200_OK,'Should not said if the email not exist')
+        self.assertEqual(len(mail.outbox), 0, 'Should not send an email for an invalid email address')
+    
+    def test_request_password_change_with_invalid_motive(self):
+        data = {**self.password_change_data}
+        data['motive'] = 'InvalidMotive'
+        request = self.client.post(self.url,data, format='json')
+        self.assertEqual(request.status_code, status.HTTP_400_BAD_REQUEST, 'Should return an error for an invalid motive')
+        self.assertIn('motive', request.data, 'Should return an error message for an invalid motive')
+
+class UserChangePasswordTests(APITestCase):
+    
+    def setUp(self):
+        self.url = reverse('auth_change_password')
+        self.User = apps.get_model('authentication', 'User')
+        self.user = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@123456789', 
+            is_active=True
+        )
+        self.token = AccessToken.for_user(self.user)
+        self.token.set_exp(
+            from_time=datetime.now(),
+            lifetime=timedelta(minutes=5)
+        )
+        self.password_data = {
+            'password': 'NewPassword@123456',
+            'password2': 'NewPassword@123456',
+            'recovery_token': str(self.token)
+        }
+    
+    def test_change_password(self):
+        
+        response = self.client.post(self.url, self.password_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, 'The user should be able to change their password successfully')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.password_data['password']), 'The new password should be set correctly')
+        
+    def test_change_password_with_invalid_password(self):
+        
+        data = {**self.password_data}
+        
+        data['password'] = 'password@123456789'
+        data['password2'] = data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The password must contain at least one capital letter.')
+        self.assertIn('password',response.data,'Should return the error message')
+        
+        data['password'] = 'Password123456789'
+        data['password2'] = data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The password must contain at least one special character')
+        self.assertIn('password',response.data,'Should return the error message')
+        
+        data['password'] = 'Password@abcdefghijk'
+        data['password2'] = data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The password must contain at least one digit')
+        self.assertIn('password',response.data,'Should return the error message')
+        
+        data['password'] = f'Password@{'0'*6}'
+        data['password2'] = data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The password must be at least characters long')
+        self.assertIn('password',response.data,'Should return the error message')
+        
+        data['password'] = f'Password@{'0'*120}'
+        data['password2'] = data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The password must be at most 128 characters long')
+        self.assertIn('password',response.data,'Should return the error message')
+        
+        data['password'] = 'Password@123456789'
+        data['password2'] = f'{data["password"]}000'
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST,'The passwords must match')
+        self.assertIn('password2',response.data,'Should return the error message')
+        
+        del data['password2']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The password2 field is required')
+        self.assertIn('password2',response.data,'Should return the error message')
+        
+        data['password2'] = 'Password@123456789'
+        del data['password']
+        response = self.client.post(self.url,data,format='json')
+        self.assertEqual(response.status_code,status.HTTP_400_BAD_REQUEST, 'The password field is required')
+        self.assertIn('password',response.data,'Should return the error message')

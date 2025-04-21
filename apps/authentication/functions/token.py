@@ -5,11 +5,11 @@ from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.backends import TokenBackend
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-def generate_recovery_token(user):
+def generate_recovery_token(user,minutes):
     
     token = AccessToken.for_user(user)
     
-    token.set_exp(from_time=datetime.datetime.now(),lifetime=datetime.timedelta(minutes=30))
+    token.set_exp(from_time=datetime.datetime.now(),lifetime=datetime.timedelta(minutes=minutes))
     
     return str(token)
 

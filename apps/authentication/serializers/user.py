@@ -9,6 +9,7 @@ from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer
 )
 from ..models import User
+from ..choices import PasswordRecoveryChoises
 import re
 
 
@@ -106,8 +107,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=value).exclude(id=instance.id).exists():
             raise serializers.ValidationError('Email is already taken')
         return value
-    
-    
+     
 class UserActivationSerializer(serializers.ModelSerializer):
     
     activation_token = serializers.CharField(required=True)
@@ -175,3 +175,66 @@ class UserRefreshSerializer(TokenRefreshSerializer):
         if 'refresh' in attrs:
             attrs['refresh'] = str(attrs['refresh'])
         return attrs
+
+class UserRequestChangePasswordSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(required=True)
+    motive = serializers.CharField(required=True)
+    class Meta:
+        model = User
+        fields = ['email','motive']
+        
+    def validate_motive(self,value:str):
+        if value not in PasswordRecoveryChoises.values:
+            raise serializers.ValidationError('Invalid motive for password recovery.')
+        return value
+    
+class UserChangePasswordSerializer(serializers.ModelSerializer):
+    recovery_token = serializers.CharField(required=True)
+    password = serializers.CharField(
+        required=True,
+        max_length=128,
+        min_length=16,
+        write_only=True
+    )
+    password2 = serializers.CharField(
+        required=True,
+        write_only=True
+    )
+    
+    class Meta:
+        model = User
+        fields = ['recovery_token', 'password', 'password2']
+    
+    def validate_password(self,value:str):
+        value = value.strip()
+        
+        if not re.search(r'[A-Z]',value):
+            raise serializers.ValidationError('Password must contain at least one capital letter')
+        if not re.search(r"[!@#$%^&*()_+\-=\[\]{}|;:'\",.<>/?`~\\]",value):
+            raise serializers.ValidationError('Password must contain at least one special character')
+        if not re.search(r"[\d]",value):
+            raise serializers.ValidationError('Password must contain at least one digit')
+        
+        return value
+
+    def validate(self, attrs:Dict[str,Any]):
+        errors:Dict[str,List[str]] = {}
+        
+        try:
+            attrs['recovery_token'] = JWTAuthentication().get_validated_token(attrs['recovery_token'])
+        except InvalidToken as e:
+            errors.setdefault('recovery_token', []).append(str(e))
+        
+        if attrs['password'] != attrs['password2']:
+            errors.setdefault('password2',[]).append('The passwords do not match')
+            raise ValidationError(errors)
+
+        return attrs
+    
+    def change_password(self)->User:
+        payload = self.validated_data['recovery_token'].payload
+        password = self.validated_data['password']
+        user = User.objects.get(id=payload['user_id'])
+        user.set_password(password)
+        user.save()
+        return user
