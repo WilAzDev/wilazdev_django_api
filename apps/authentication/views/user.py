@@ -142,7 +142,7 @@ class UserRequestChangePasswordView(generics.CreateAPIView):
 
         token = generate_recovery_token(user,5)
         
-        recovery_url = f"{settings.FRONTEND_URL}/reset-password/{token}"
+        recovery_url = f"{settings.FRONTEND_URL}/auth/reset-password/{token}"
         
         subject = PasswordRecoveryChoises(request.data.get('motive'))
         
@@ -181,4 +181,3 @@ class UserChangePasswordView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.change_password()
         return Response({'message':'Password changed successfully'},status=status.HTTP_200_OK)
-        

@@ -6,14 +6,14 @@ class User(AbstractUser):
     last_name = None
     email = models.EmailField(unique=True)
     class Meta:
-        db_table = 'user'
+        db_table = 'users'
 
 class Gender(models.Model):
     name = models.CharField(max_length=100)
     short = models.CharField(max_length=7)
     
     class Meta:
-        db_table = 'gender'
+        db_table = 'genders'
 
 class Profile(models.Model):
     first_name = models.CharField(max_length=150)
@@ -24,4 +24,4 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
     class Meta:
-        db_table = 'profile'
+        db_table = 'profiles'
