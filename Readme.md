@@ -24,7 +24,7 @@
     pip install -r requirements.txt
 ```
 4. Copy the .env.example doc:
-- Microsoft : `copy .env.example core/.env`
+- Microsoft : `copy .env.example .env`
 - Linux/Mac : `cp .env.example .env`
 5. Update the .env file with your database credentials
 6. Run the command to create a secret key:

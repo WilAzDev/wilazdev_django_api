@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-
 from django.core.management.base import BaseCommand
 from django.core.management.utils import get_random_secret_key
 
@@ -25,7 +23,6 @@ class Command(BaseCommand):
         
         if options["update_env"]:
             env_path = Path(options["env_file"])
-            
             try:
                 if not env_path.exists():
                     env_path.write_text(f"SECRET_KEY={secret_key}\n")
@@ -52,6 +49,4 @@ class Command(BaseCommand):
                     self.style.ERROR(f"Error updating {env_path}: {e}")
                 )
         else:
-            self.stdout.write(
-                self.stdout.write(secret_key)
-            )
+            self.stdout.write(secret_key)
