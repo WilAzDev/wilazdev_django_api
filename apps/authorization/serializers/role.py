@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Role
+from apps.authentication.models import User
 import re
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -16,4 +17,24 @@ class RoleSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Name can't contain special characters")
         elif re.search(r"[\d]",value):
             raise serializers.ValidationError("Name can't contain numbers")
+        return value
+
+class AssignRoleSerializer(serializers.Serializer):
+    roles = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=True,
+        help_text='List of roles id'        
+    )
+    
+    def validate_roles(self, value):
+        existing_ids = set(Role.objects.filter(pk__in=value).values_list('id', flat=True))
+        missing = [rid for rid in value if rid not in existing_ids]
+        
+        if missing:
+            if len(missing) == 1:
+                msg = f"The rol for id {missing[0]} does not exist"
+            else:
+                msg = f"The rol for ids {', '.join(map(str, missing))} does not exist"
+            raise serializers.ValidationError(msg)
+        
         return value

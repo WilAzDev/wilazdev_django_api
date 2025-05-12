@@ -2,7 +2,6 @@ from django.urls import path
 from .views import (
     user,
     profile,
-    gender
 )
 urlpatterns = [
     path('register',user.UserRegisterView.as_view(),name='auth_register'),

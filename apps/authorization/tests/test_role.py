@@ -89,10 +89,10 @@ class RoleUpdateTests(APITestCase):
     def test_role_update_with_valid_data(self):
         data = {'name': 'UPDATED_ROLE'}
         response = self.client.put(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK, 'Update failed with valid data')  # 200 OK expected
+        self.assertEqual(response.status_code, status.HTTP_200_OK, 'Update failed with valid data')
         
         self.role.refresh_from_db()
-        self.assertEqual(self.role.name, 'updated_role', 'Name not updated in database')  # Check normalization
+        self.assertEqual(self.role.name, 'updated_role', 'Name not updated in database')
         
     def test_role_update_with_invalid_name(self):
         self.Role.objects.create(name='existing_role')
