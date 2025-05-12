@@ -1,7 +1,10 @@
 # DJANGO API TEMPLATE
-## AUTHOR: [WilAzDev](https://github.com/WilAzDev)
-## DATE: NOT PUBLISHED
-## DESCRIPTION: A simple Django API template for building RESTful APIs.
+## AUTHOR: 
+[WilAzDev](https://github.com/WilAzDev)
+## DATE:
+NOT PUBLISHED
+## DESCRIPTION: 
+A simple Django API template for building RESTful APIs.
 ## VERSION: 1.0.0
 ## INCLUDES:
 - **authentication app** for user authentication

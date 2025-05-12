@@ -49,11 +49,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'rest_framework',
-    'drf_yasg',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'apps.authentication',
-    'apps.authorization'
+    'drf_yasg',
+    'apps.authorization',
 ]
 
 MIDDLEWARE = [
@@ -124,7 +124,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('REFRESH_TOKEN_LIFETIME',default=1)),
     'ROTATE_REFRESH_TOKENS':env.bool('ROTATE_REFRESH_TOKENS',default=False),
     'BLACKLIST_AFTER_ROTATION':env.bool('BLACKLIST_AFTER_ROTATION',default=False),
-    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.user.UserLoginSerializer',
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.user.UserLoginSerializer',
 }
 
 

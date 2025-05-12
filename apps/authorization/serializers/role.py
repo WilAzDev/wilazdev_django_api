@@ -9,8 +9,10 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = ('__all__')
         
     def validate_name(self,value:str):
-        value = value.strip().lower().replace(' ','_')
-        if re.search(r"[!@#$%^&*()_+\-=\[\]{}|;:'\",.<>/?`~\\]",value):
+        value = re.sub(r'\s+', '_', value.strip().lower())
+        if Role.objects.filter(name=value).exists():
+            raise serializers.ValidationError('Role already exists')
+        elif re.search(r"[!@#$%^&*()+\-=\[\]{}|;:'\",.<>/?`~\\]",value):
             raise serializers.ValidationError("Name can't contain special characters")
         elif re.search(r"[\d]",value):
             raise serializers.ValidationError("Name can't contain numbers")

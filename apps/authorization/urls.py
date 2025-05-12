@@ -5,8 +5,8 @@ from .views import (
 )
 
 router = DefaultRouter()
-# router.register(f'roles',role.RoleViewSet)
+router.register(f'roles',role.RoleViewSet)
 
 urlpatterns = [
-    # path('',include(router.urls)),
+    path('',include(router.urls)),
 ]
