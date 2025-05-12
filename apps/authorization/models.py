@@ -6,9 +6,9 @@ class Role(models.Model):
     class Meta:
         db_table='roles'        
 
-class UserHasRole(models.Model):
+class UserRole(models.Model):
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     user = models.ForeignKey('authentication.User', on_delete=models.CASCADE)
     class Meta:
-        db_table='user_has_roles'
+        db_table='user_roles'
         unique_together = [('user', 'role')]

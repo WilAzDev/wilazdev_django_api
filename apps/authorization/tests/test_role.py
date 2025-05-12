@@ -117,3 +117,52 @@ class RoleUpdateTests(APITestCase):
         data['name'] = 'a' * 31
         response = self.client.put(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, 'Allowed over-length name')
+
+class RoleDeleteTests(APITestCase):
+    def setUp(self):
+        self.Role = apps.get_model('authorization', 'Role')
+        self.User = apps.get_model('authentication', 'User')
+        
+        self.role_to_delete = self.Role.objects.create(name='test_role')
+        
+        self.user_with_role = self.User.objects.create_user(
+            username='testuser',
+            email='testuser@example.com',
+            password='Password@1234567',
+            is_active=True
+        )
+        self.user_with_role.assign_roles([self.role_to_delete.id])
+        
+        self.admin_user = self.User.objects.create_user(
+            username='adminuser',
+            email='admin@example.com',
+            password='AdminPassword@123',
+            is_active=True
+        )
+        admin_role = self.Role.objects.filter(name='admin').first()
+        self.admin_user.assign_roles([admin_role.id])
+        
+        self.access_token = AccessToken.for_user(self.admin_user)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + str(self.access_token))
+        
+        self.url = reverse('role-detail', kwargs={'pk': self.role_to_delete.id})
+
+    def test_role_delete_removes_user_assignments(self):
+        initial_assignment = self.user_with_role.roles.filter(id=self.role_to_delete.id).exists()
+        self.assertTrue(initial_assignment, 'Role was not assigned to the user initially')
+        
+        response = self.client.delete(self.url)
+        
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, 'Role was not deleted successfully')
+        
+        role_exists = self.Role.objects.filter(id=self.role_to_delete.id).exists()
+        self.assertFalse(role_exists, 'Role still exists in the database')
+        
+        self.user_with_role.refresh_from_db()
+        remaining_assignments = self.user_with_role.roles.count()
+        self.assertEqual(remaining_assignments, 0, 'Role assignments were not removed')
+
+    def test_cannot_delete_nonexistent_role(self):
+        invalid_url = reverse('role-detail', kwargs={'pk': 9999})
+        response = self.client.delete(invalid_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, 'Deleting a non-existent role should return 404')

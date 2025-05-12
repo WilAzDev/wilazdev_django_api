@@ -6,7 +6,7 @@ class User(AbstractUser):
     first_name = None
     last_name = None
     email = models.EmailField(unique=True)
-    roles = models.ManyToManyField(Role,related_name='user_has_roles',through='authorization.UserHasRole')
+    roles = models.ManyToManyField(Role,related_name='user_has_roles',through='authorization.UserRole')
     
     class Meta:
         db_table = 'users'
