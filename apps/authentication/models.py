@@ -1,10 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from apps.authorization.models import Role
+from apps.authorization.classes import HasRoles,HasPermissions
 
-class User(AbstractUser):
+class User(AbstractUser,HasRoles,HasPermissions):
     first_name = None
     last_name = None
     email = models.EmailField(unique=True)
+    roles = models.ManyToManyField(Role,related_name='user_has_roles',through='authorization.UserRole')
+    permissions = models.ManyToManyField('authorization.Permission',related_name='user_has_permissions',through='authorization.UserPermission')
     class Meta:
         db_table = 'users'
 

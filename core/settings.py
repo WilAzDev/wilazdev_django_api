@@ -13,13 +13,14 @@ import sys
 import environ
 import datetime
 from pathlib import Path
+import os
 
 env = environ.Env()
-environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
+environ.Env.read_env(BASE_DIR/'.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -48,15 +49,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'rest_framework',
-    'drf_yasg',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'apps.authentication',
-    'apps.authorization'
+    'drf_yasg',
+    'apps.authorization',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -122,7 +124,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=env.int('REFRESH_TOKEN_LIFETIME',default=1)),
     'ROTATE_REFRESH_TOKENS':env.bool('ROTATE_REFRESH_TOKENS',default=False),
     'BLACKLIST_AFTER_ROTATION':env.bool('BLACKLIST_AFTER_ROTATION',default=False),
-    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.user.UserLoginSerializer',
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.authentication.serializers.user.UserLoginSerializer',
 }
 
 
@@ -162,7 +164,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

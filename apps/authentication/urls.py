@@ -2,7 +2,6 @@ from django.urls import path
 from .views import (
     user,
     profile,
-    gender
 )
 urlpatterns = [
     path('register',user.UserRegisterView.as_view(),name='auth_register'),
@@ -15,5 +14,4 @@ urlpatterns = [
     path('users/update/<int:pk>/',user.UserUpdateView.as_view(),name='auth_user_update'),
     path('profiles/create',profile.ProfileCreateView.as_view(),name='auth_profile_create'),
     path('profiles/update/<int:pk>/',profile.ProfileUpdateView.as_view(),name='auth_profile_update'),
-    path('genders',gender.GenderListView.as_view(),name='gender_list')
 ]
