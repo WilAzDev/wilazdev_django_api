@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from apps.authorization.models import Role
 from apps.authentication.models import User
 from ..permissions import HasRoles
-from ..serializers import role
+from ..serializers import role,permission
 from http import HTTPMethod
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -35,4 +35,24 @@ class RoleViewSet(viewsets.ModelViewSet):
         user = User.objects.get(pk=user_id)
         roles = user.roles.all()
         serializer = self.get_serializer(roles,many=True)
-        return Response(serializer.data,status=status.HTTP_200_OK)     
+        return Response(serializer.data,status=status.HTTP_200_OK)
+    
+    @swagger_auto_schema(
+        request_body=permission.AssignPermissionSerializer,
+        responses={200: openapi.Response('Success',role.RoleSerializer)},
+    )
+    @action(
+        detail=True,
+        methods=[HTTPMethod.POST],
+        url_path='assign-permission',
+    )
+    def assign_permission(self,request,pk=True):
+        role = self.get_object()
+        in_serializer = permission.AssignPermissionSerializer(data=request.data)
+        in_serializer.is_valid(raise_exception=True)
+        permissions = in_serializer.validated_data['permissions']
+        
+        role.assign_permissions(permissions)
+        serializer = self.get_serializer(role)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+        
