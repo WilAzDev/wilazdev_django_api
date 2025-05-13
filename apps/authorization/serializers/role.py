@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from ..models import Role
-from apps.authentication.models import User
 import re
 
 class RoleSerializer(serializers.ModelSerializer):
