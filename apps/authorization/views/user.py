@@ -1,9 +1,10 @@
 from rest_framework import viewsets,status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from ..serializers import user,role,permission
 from apps.authentication.models import User
-from apps.authorization.permissions import HasRoles
+from apps.authorization.permissions import HasRoles,IsSuperAdmin
 from http import HTTPMethod
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -11,9 +12,8 @@ from drf_yasg.utils import swagger_auto_schema
 class UserViewSet(viewsets.GenericViewSet):
     serializer_class = user.UserSerializer
     queryset = User.objects.all()
-    permission_classes = [HasRoles]
+    permission_classes = [IsAuthenticated,IsSuperAdmin|HasRoles]
     allowed_roles = ['admin']
-    allow_safe_methods = False
     
     @action(
         detail=True,

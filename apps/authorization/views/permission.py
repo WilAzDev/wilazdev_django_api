@@ -1,9 +1,10 @@
 from rest_framework import status,viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from apps.authorization.models import Permission,Role
 from apps.authentication.models import User
-from apps.authorization.permissions import HasRoles
+from apps.authorization.permissions import HasRoles,IsSuperAdmin,SafeMethodsForAll
 from apps.authorization.serializers import permission
 from http import HTTPMethod
 from drf_yasg import openapi
@@ -12,7 +13,7 @@ from drf_yasg.utils import swagger_auto_schema
 class PermissionViewSet(viewsets.ModelViewSet):
     queryset = Permission.objects.all()
     serializer_class = permission.PermissionSerializer
-    permission_classes = [HasRoles]
+    permission_classes = [IsAuthenticated,IsSuperAdmin|HasRoles|SafeMethodsForAll]
     allowed_roles = ['admin']
     
     @swagger_auto_schema(

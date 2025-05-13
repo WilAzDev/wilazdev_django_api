@@ -1,24 +1,30 @@
+from django.db.models import Q
 from rest_framework import permissions
+from apps.authorization.models import Permission
+
+class SafeMethodsForAll(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
 
 class IsSuperAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.user and request.user.is_superuser:
-            return True
-        allow_safe_methods = getattr(view,'allow_safe_methods',True)
-        if not allow_safe_methods:
-            return False
-        return request.method in permissions.SAFE_METHODS
+        return request.user and request.user.is_superuser
 
-class HasRoles(IsSuperAdmin):
+class HasRoles(permissions.BasePermission):
     def has_permission(self, request, view):
-        allowed_roles = getattr(view,'allowed_roles',None)
-       
-        if not allowed_roles:
-            return True
+        allowed_roles = getattr(view,'allowed_roles',[])
+        user_roles = request.user.roles.values_list("name",flat=True)
+        return any(role in allowed_roles for role in user_roles)
 
-        user_roles = request.user.roles.values_list('name',flat=True)
-        if any(role in allowed_roles for role in user_roles):
-            return True
+class HasPermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        allowed_permissions = getattr(view,'allowed_permissions',[])
+        user_permissions = set(
+            Permission.objects.filter(
+                Q(user_has_permissions__user=request.user),
+                Q(role_has_permissions__role__user=request.user)
+            ).values_list('name',flat=True).distinct()
+        )
+        return any(permission in allowed_permissions for permission in user_permissions)
         
-        return super().has_permission(self,request,view)
         
